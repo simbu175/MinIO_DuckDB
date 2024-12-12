@@ -19,6 +19,7 @@ class MinIO:
     This class is used only for defining the MinIO host connection parameters
     and returning with a client to interact programmatically with the MinIO through its APIs
     """
+
     def __init__(self, config_section=bc.aws_config_section):
         # aws_con = configparser.ConfigParser()
         # aws_con.read(bc.AWS_CONFIG)
@@ -58,6 +59,7 @@ class MinUtils(MinIO):
     creating a bucket, removing a bucket, getting the list of buckets and objects in a bucket,
     removing an object, etc.
     """
+
     def __init__(self, config_section, target_bucket_name=None,
                  content_type=f'application/csv', metadata=None, sse=None, part_size=0,
                  num_parallel_uploads=10, tags=None, retention=None, legal_hold=None):
@@ -213,7 +215,7 @@ class MinUtils(MinIO):
         :return: The object iterator that is returned by the list_objects API
         """
         try:
-            objects = self.get_minio_client().\
+            objects = self.get_minio_client(). \
                 list_objects(bucket_name=bucket_name,
                              prefix=prefix,
                              recursive=recurse,
@@ -250,7 +252,7 @@ class MinUtils(MinIO):
         Method to delete multiple objects for a given bucket. Ensure to give the object paths as list of
         object_names so this can be deleted through the DeleteObject iterator
         :param bucket_name: MinIO bucket name
-        :param object_list: List of objects inside the bucket that needs deletion with a single API call
+        :param object_list: List of objects inside the bucket that needs deletion or a prefix that needs to be deleted
         :param bypass_governance_mode: False by default, to remove the s3:BypassGovernanceRetention permission
         on the bucket so that MinIO can lift the lock automatically
         :return: An error iterator for DeleteError object
@@ -258,8 +260,9 @@ class MinUtils(MinIO):
         try:
             minio_logger.info(f"Deleting the objects, {object_list} from the {bucket_name} bucket")
             errors = self.get_minio_client().remove_objects(bucket_name=bucket_name,
-                                                            delete_object_list=object_list)
-            return  errors
+                                                            delete_object_list=object_list,
+                                                            bypass_governance_mode=bypass_governance_mode)
+            return errors
 
         except Exception as e:
             minio_except.error(f"Exception occured when removing objects: {object_list}: {e}")
@@ -272,8 +275,12 @@ if __name__ == f"__main__":
     # print(f" Get the minio client: {s3_obj.get_minio_client()}")
     minio_logger.info(f" Get the minio client: {s3_obj.get_minio_client()}")
 
-    output_data = s3_obj.load_file_paths(
-        local_path=bc.DATA_PATH,
-        bucket_name=bc.s3_raw_bucket,
-        minio_path=f'inputs')
-    minio_logger.info(f"\nFile status: {output_data}")
+    # output_data = s3_obj.load_file_paths(
+    #     local_path=bc.DATA_PATH,
+    #     bucket_name=bc.s3_raw_bucket,
+    #     minio_path=f'inputs')
+    # minio_logger.info(f"\nFile status: {output_data}")
+
+    # obj_list = s3_obj.list_minio_objects()
+    objects = [f's3://{i.bucket_name}/{i.object_name}:{i.last_modified}' for i in s3_obj.list_minio_objects()]
+    print(f"List of objects: {objects}")
